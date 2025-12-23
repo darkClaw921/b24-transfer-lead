@@ -496,9 +496,9 @@ async def export_leads_csv(
             display_name = mapping.display_name.strip() if mapping.display_name else mapping.bitrix24_field_name
             headers.append(display_name)
 
-    # Create CSV content
+    # Create CSV content with semicolon delimiter for Excel compatibility (Russian locale uses ;)
     output = io.StringIO()
-    writer = csv.writer(output, delimiter=',', quoting=csv.QUOTE_MINIMAL)
+    writer = csv.writer(output, delimiter=';', quoting=csv.QUOTE_MINIMAL)
     
     # Write headers
     writer.writerow(headers)
