@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     # API Documentation
     ENABLE_DOCS: bool = False  # Отключить Swagger UI по умолчанию для безопасности
 
+    # Admin user creation (used only in create_admin.py script)
+    ADMIN_USERNAME: str | None = None
+    ADMIN_PASSWORD: str | None = None
+
     class Config:
         env_file = ".env"
         case_sensitive = True
