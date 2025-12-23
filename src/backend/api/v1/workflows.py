@@ -246,6 +246,9 @@ async def get_workflow_settings(
 
     # Build webhook endpoint URL
     base_url = str(request.base_url).rstrip("/")
+    # Force HTTPS for webhook endpoint URL
+    if base_url.startswith("http://"):
+        base_url = base_url.replace("http://", "https://", 1)
     webhook_endpoint_url = f"{base_url}/api/v1/webhook"
     
     # Build public API URL if token exists (use same base_url as webhook for consistency)
@@ -327,6 +330,9 @@ async def update_workflow_settings(
 
     # Build webhook endpoint URL
     base_url = str(http_request.base_url).rstrip("/")
+    # Force HTTPS for webhook endpoint URL
+    if base_url.startswith("http://"):
+        base_url = base_url.replace("http://", "https://", 1)
     webhook_endpoint_url = f"{base_url}/api/v1/webhook"
     
     # Build public API URL if token exists (use same base_url as webhook for consistency)

@@ -66,6 +66,7 @@
 cp .env.example .env
 ```
 
+
 2. Запустите приложение:
 ```bash
 docker-compose up -d --build
