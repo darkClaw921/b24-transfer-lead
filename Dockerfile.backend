@@ -1,0 +1,36 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Install uv
+# Установка системных зависимостей
+RUN apt-get update && apt-get install -y \
+    gcc \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+
+
+# Install uv
+ADD https://astral.sh/uv/0.9.17/install.sh /uv-installer.sh
+# Run the installer then remove it
+RUN sh /uv-installer.sh && rm /uv-installer.sh
+# Ensure the installed binary is on the `PATH`
+ENV PATH="/root/.local/bin/:$PATH"
+
+# Copy dependency files
+COPY pyproject.toml uv.lock ./
+
+# Install dependencies
+RUN uv sync 
+
+# Copy application code
+COPY src/backend ./src/backend
+# Note: workflows directory is mounted as volume, so we don't copy it here
+
+# Expose port
+EXPOSE 7860
+
+# Run the application
+CMD ["uv", "run", "uvicorn", "src.backend.main:app", "--host", "0.0.0.0", "--port", "7860"]
+

@@ -1,0 +1,43 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: b24-transfer-lead-backend
+    # ports:
+      # - "7860:7860"
+    environment:
+      - MAIN_DB_URL=sqlite:///./main.db
+      - WORKFLOWS_DIR=./workflows
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
+      - SESSION_COOKIE_NAME=${SESSION_COOKIE_NAME:-session_id}
+      - SESSION_EXPIRE_MINUTES=${SESSION_EXPIRE_MINUTES:-1440}
+      - CORS_ORIGINS=${CORS_ORIGINS:-["http://localhost:3000","http://localhost:5173"]}
+      - ENABLE_DOCS=${ENABLE_DOCS:-false}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3012}
+    volumes:
+      # Основная база данных (main.db) хранится на хосте
+      - ./main.db:/app/main.db
+      # Директория с базами данных workflow хранится на хосте
+      - ./workflows:/app/workflows
+    restart: unless-stopped
+    networks:
+      - b24-network
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: b24-transfer-lead-frontend
+    ports:
+      - "3012:3012"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - b24-network
+
+networks:
+  b24-network:
+    driver: bridge
+
