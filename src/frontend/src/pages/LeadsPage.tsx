@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { useLeadsStore } from '@/stores/leadsStore'
-import { workflowsAPI } from '@/services/api'
+import { workflowsAPI, leadsAPI } from '@/services/api'
 import type { WorkflowSettings, Status } from '@/types'
 import LeadsTable from '@/components/LeadsTable'
 import LeadForm from '@/components/LeadForm'
@@ -102,6 +102,14 @@ export default function LeadsPage() {
           )}
         </div>
         <div className="flex space-x-3">
+          {leads.length > 0 && (
+            <button
+              onClick={() => leadsAPI.exportCSV(workflowId)}
+              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+            >
+              Экспорт в CSV
+            </button>
+          )}
           <button
             onClick={() => setShowCSVUpload(true)}
             className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"

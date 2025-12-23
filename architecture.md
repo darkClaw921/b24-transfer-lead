@@ -217,6 +217,7 @@ b24-transfer-lead/
 - `GET /leads`: Список лидов workflow (включает дополнительные поля в поле `fields`)
 - `POST /leads`: Создание лида или сделки (в зависимости от настроек workflow, поддерживает дополнительные поля через маппинг)
 - `POST /leads/upload`: Загрузка лидов/сделок из CSV (в зависимости от настроек workflow, поддерживает дополнительные поля через маппинг)
+- `GET /leads/export`: Экспорт лидов workflow в CSV файл (возвращает CSV файл с заголовками и данными всех лидов, включая дополнительные поля)
   - Принимает CSV файл и опциональные параметры:
     - `column_mapping` (JSON строка) для маппинга колонок CSV на поля маппинга
     - `limit` (строка с числом) для ограничения количества обрабатываемых строк
@@ -301,7 +302,11 @@ b24-transfer-lead/
 - Процент конверсии отображается рядом с названием workflow в карточке
 
 #### LeadsPage (`src/frontend/src/pages/LeadsPage.tsx`)
-Страница управления лидами workflow с таблицей и формами.
+Страница управления лидами workflow с таблицей и формами:
+- Отображение статистики конверсии
+- Кнопка экспорта лидов в CSV (отображается только если есть лиды)
+- Кнопка загрузки CSV файла
+- Кнопка добавления лида вручную
 
 #### WorkflowSettingsPage (`src/frontend/src/pages/WorkflowSettingsPage.tsx`)
 Страница настройки workflow:
@@ -384,7 +389,7 @@ Axios клиент с interceptors для авторизации:
 - `authAPI`: Методы авторизации
 - `usersAPI`: Методы управления пользователями
 - `workflowsAPI`: Методы управления workflow и настройками (getSettings, updateSettings, getFunnels, getStages, getLeadStatuses, getConversionStats)
-- `leadsAPI`: Методы управления лидами (list, create, uploadCSV с поддержкой маппинга колонок)
+- `leadsAPI`: Методы управления лидами (list, create, uploadCSV с поддержкой маппинга колонок, exportCSV для экспорта в CSV файл)
 
 ## Поток данных
 

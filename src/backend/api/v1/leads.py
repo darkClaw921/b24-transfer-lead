@@ -1,8 +1,10 @@
 """Lead management endpoints."""
+import csv
+import io
 import json
 from typing import Any
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile, status
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
@@ -417,3 +419,126 @@ async def upload_leads_csv(
     workflow_db.close()
     return result
 
+
+@router.get("/{workflow_id}/leads/export")
+async def export_leads_csv(
+    workflow_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_main_db),
+):
+    """Export leads to CSV file."""
+    # Verify workflow access
+    workflow = db.query(Workflow).filter(Workflow.id == workflow_id).first()
+    if not workflow:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Workflow not found",
+        )
+
+    # Check access: user can access workflow if they created it, have access to it, or are admin
+    has_access = (
+        current_user.role == "admin"
+        or workflow.user_id == current_user.id
+        or workflow in current_user.accessible_workflows
+    )
+    
+    if not has_access:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied",
+        )
+
+    # Get leads from workflow database
+    workflow_db = next(database_service.get_workflow_session(workflow_id))
+    leads = workflow_db.query(Lead).all()
+
+    # Get field mappings for column headers
+    mappings = db.query(WorkflowFieldMapping).filter(
+        WorkflowFieldMapping.workflow_id == workflow_id,
+        WorkflowFieldMapping.entity_type == workflow.entity_type,
+    ).all()
+    
+    # Create mapping dict: field_name -> display_name
+    field_display_names = {}
+    for mapping in mappings:
+        display_name = mapping.display_name.strip() if mapping.display_name else mapping.bitrix24_field_name
+        field_display_names[mapping.field_name] = display_name
+
+    # Get status map for display
+    status_map: dict[str, str] = {}
+    try:
+        bitrix_service = Bitrix24Service(workflow.bitrix24_webhook_url)
+        entity_type = workflow.entity_type or "lead"
+        
+        if entity_type == "deal":
+            category_id = workflow.deal_category_id if workflow.deal_category_id is not None else 0
+            statuses = await bitrix_service.get_deal_stages(category_id)
+        else:
+            statuses = await bitrix_service.get_lead_statuses()
+        
+        for status in statuses:
+            status_map[status["id"]] = status["name"]
+    except Exception as e:
+        print(f"Error loading status map: {e}")
+
+    # Get all unique field names from leads
+    all_field_names = set()
+    for lead in leads:
+        lead_fields = workflow_db.query(LeadField).filter(LeadField.lead_id == lead.id).all()
+        for field in lead_fields:
+            all_field_names.add(field.field_name)
+
+    # Build CSV headers
+    headers = ["Имя", "Телефон", "Статус", "Ответственный", "Bitrix24 ID", "Создан"]
+    # Add additional fields in order from mappings
+    for mapping in mappings:
+        if mapping.field_name in all_field_names:
+            display_name = mapping.display_name.strip() if mapping.display_name else mapping.bitrix24_field_name
+            headers.append(display_name)
+
+    # Create CSV content
+    output = io.StringIO()
+    writer = csv.writer(output, delimiter=',', quoting=csv.QUOTE_MINIMAL)
+    
+    # Write headers
+    writer.writerow(headers)
+    
+    # Write data rows
+    for lead in leads:
+        # Get status display name
+        status_display = status_map.get(lead.status, lead.status) if lead.status else "NEW"
+        
+        # Get additional fields
+        lead_fields = workflow_db.query(LeadField).filter(LeadField.lead_id == lead.id).all()
+        field_dict = {field.field_name: field.field_value for field in lead_fields}
+        
+        # Build row
+        row = [
+            lead.name,
+            lead.phone,
+            status_display,
+            lead.assigned_by_name or "",
+            lead.bitrix24_lead_id or "",
+            lead.created_at.strftime("%Y-%m-%d %H:%M:%S") if lead.created_at else "",
+        ]
+        
+        # Add additional fields in order from mappings
+        for mapping in mappings:
+            if mapping.field_name in all_field_names:
+                row.append(field_dict.get(mapping.field_name, ""))
+        
+        writer.writerow(row)
+    
+    workflow_db.close()
+    
+    # Return CSV file
+    csv_content = output.getvalue()
+    output.close()
+    
+    return Response(
+        content=csv_content,
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": f'attachment; filename="leads_workflow_{workflow_id}.csv"'
+        }
+    )
