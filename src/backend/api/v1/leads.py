@@ -531,13 +531,16 @@ async def export_leads_csv(
     
     workflow_db.close()
     
-    # Return CSV file
+    # Return CSV file with UTF-8 BOM for Excel compatibility
     csv_content = output.getvalue()
     output.close()
     
+    # Add UTF-8 BOM for Excel to recognize encoding correctly
+    csv_bytes = csv_content.encode('utf-8-sig')
+    
     return Response(
-        content=csv_content,
-        media_type="text/csv",
+        content=csv_bytes,
+        media_type="text/csv; charset=utf-8",
         headers={
             "Content-Disposition": f'attachment; filename="leads_workflow_{workflow_id}.csv"'
         }
